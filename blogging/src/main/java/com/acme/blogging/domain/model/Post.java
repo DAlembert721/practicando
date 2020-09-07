@@ -1,7 +1,6 @@
 package com.acme.blogging.domain.model;
 
 
-
 import com.sun.istack.NotNull;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -13,7 +12,7 @@ import javax.persistence.*;
 @NoArgsConstructor
 @Entity
 @Table(name = "posts")
-public class Post extends AuditModel{
+public class Post extends AuditModel {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,7 +28,6 @@ public class Post extends AuditModel{
     @NotNull
     @Lob
     private String content;
-
 
 
 }

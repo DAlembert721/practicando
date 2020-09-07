@@ -12,7 +12,7 @@ import javax.persistence.*;
 @NoArgsConstructor
 @Entity
 @Table(name = "comments")
-public class Comment extends AuditModel{
+public class Comment extends AuditModel {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
