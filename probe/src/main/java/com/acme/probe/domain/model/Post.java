@@ -5,6 +5,7 @@ import org.hibernate.annotations.ManyToAny;
 import javax.persistence.*;
 import javax.validation.constraints.NotNull;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -31,12 +32,32 @@ public class Post extends AuditModel{
             @JoinTable(name = "post_tags",
             joinColumns = { @JoinColumn(name = "post_id")},
             inverseJoinColumns = { @JoinColumn(name = "tag_id")})
-    private Set<Tag> tags = new HashSet<>();
+    private List<Tag> tags;
 
     public Post(@NotNull String title, @NotNull String description, @NotNull String content) {
         this.title = title;
         this.description = description;
         this.content = content;
+    }
+
+    public Post() {
+    }
+
+    public Boolean isTaggedWith(Tag tag) {
+        return this.getTags().contains(tag);
+    }
+
+    public Post tagWith(Tag tag) {
+        if(!this.isTaggedWith(tag))
+            this.getTags().add(tag);
+        return this;
+    }
+
+    public Post unTagWith(Tag tag) {
+        if(!this.isTaggedWith(tag)) {
+            this.getTags().remove(tag);
+        }
+        return this;
     }
 
 
@@ -77,11 +98,11 @@ public class Post extends AuditModel{
     }
 
 
-    public Set<Tag> getTags() {
+    public List<Tag> getTags() {
         return tags;
     }
 
-    public Post setTags(Set<Tag> tags) {
+    public Post setTags(List<Tag> tags) {
         this.tags = tags;
         return this;
     }

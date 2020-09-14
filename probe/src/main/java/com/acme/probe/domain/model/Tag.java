@@ -6,6 +6,7 @@ import javax.persistence.*;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -24,7 +25,7 @@ public class Tag extends AuditModel {
     @ManyToMany(fetch = FetchType.LAZY,
             cascade = {CascadeType.PERSIST, CascadeType.MERGE},
             mappedBy = "tags")
-    private Set<Post> posts = new HashSet<>();
+    private List<Post> posts;
 
     public Tag() {
     }
@@ -34,5 +35,30 @@ public class Tag extends AuditModel {
     }
 
 
+    public Long getId() {
+        return id;
+    }
 
+    public Tag setId(Long id) {
+        this.id = id;
+        return this;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public Tag setName(String name) {
+        this.name = name;
+        return this;
+    }
+
+    public List<Post> getPosts() {
+        return posts;
+    }
+
+    public Tag setPosts(List<Post> posts) {
+        this.posts = posts;
+        return this;
+    }
 }

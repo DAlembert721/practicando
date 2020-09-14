@@ -2,14 +2,21 @@ package com.acme.probe.controller;
 
 import com.acme.probe.domain.model.Post;
 import com.acme.probe.domain.repository.PostRepository;
+import com.acme.probe.domain.service.PostService;
 import com.acme.probe.exception.ResourceNotFoundException;
+import com.acme.probe.resource.PostResource;
+import com.acme.probe.resource.SavePostResource;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.util.List;
+import java.util.stream.Collectors;
 
 
 @RestController
@@ -17,7 +24,11 @@ import javax.validation.Valid;
 public class PostsController {
 
     @Autowired
-    private  PostRepository postRepository;
+    private ModelMapper mapper;
+
+    @Autowired
+    private PostService postService;
+
 
     /*@Autowired
     public PostsController(PostRepository postRepository) {
@@ -25,35 +36,65 @@ public class PostsController {
     }*/
 
     @GetMapping("/posts")
-    public Page<Post> getAllPosts(Pageable pageable) {
-        return postRepository.findAll(pageable);
+    public Page<PostResource> getAllPosts(Pageable pageable) {
+        Page<Post> postsPage = postService.getAllPosts(pageable);
+        List<PostResource> resources = postsPage.getContent()
+                .stream()
+                .map(this::convertToResource)
+                .collect(Collectors.toList());
+        return new PageImpl<>(resources,pageable, resources.size());
     }
 
     @PostMapping("/posts")
-    public Post createPost(@Valid @RequestBody Post post) {
-        return postRepository.save(post);
+    public PostResource createPost(@Valid @RequestBody SavePostResource resource) {
+        Post post = convertToEntity(resource);
+        return convertToResource(postService.createPost(post));
     }
 
     @PutMapping("/posts/{postId}")
-    public Post updatePost(@PathVariable Long postId, @Valid @RequestBody Post postRequest) {
-        return postRepository.findById(postId)
-                .map(post -> {
-                    post.setTitle(postRequest.getTitle());
-                    post.setDescription(postRequest.getDescription());
-                    post.setContent(postRequest.getContent());
-                    return  postRepository.save(post);
-                }).orElseThrow(() -> new ResourceNotFoundException(
-                        "postId " + postId + " not found"));
+    public PostResource updatePost(@PathVariable Long postId, @Valid @RequestBody SavePostResource postRequest) {
+        Post post = convertToEntity(postRequest);
+        return convertToResource(postService.updatePost(postId, post));
     }
 
     @DeleteMapping("/posts/{postId}")
     public ResponseEntity<?> deletePost(@PathVariable Long postId) {
-        return  postRepository.findById(postId)
-                .map(post -> {
-                    postRepository.delete(post);
-                    return ResponseEntity.ok().build();
-                }).orElseThrow(() -> new ResourceNotFoundException(
-                        "postId " + postId + " not found"));
+        return postService.deletePost(postId);
     }
 
+    @GetMapping("/tags/{tagId}/posts")
+    public Page<PostResource> getAllPostsByTagId(
+            @PathVariable(name = "tagId") Long tagId,
+            Pageable pageable) {
+        Page<Post> postsPage = postService.getAllPostsByTagId(tagId,pageable);
+        List<PostResource> resources = postsPage.getContent()
+                .stream()
+                .map(this::convertToResource)
+                .collect(Collectors.toList());
+        return new PageImpl<>(resources,pageable,resources.size());
+    }
+
+    @PostMapping("/posts/{postId}/tags/{tagId}")
+    public PostResource assignPostTag(
+            @PathVariable(name = "postId") Long postId,
+            @PathVariable(name = "tagId") Long tagId
+    ) {
+        return convertToResource(postService.assignPostTag(postId,tagId));
+    }
+
+    @PutMapping("/posts/{postId}/tags/{tagId}")
+    public PostResource unAssignPostTag(
+            @PathVariable(name = "postId") Long postId,
+            @PathVariable(name = "tagId") Long tagId
+    ) {
+        return convertToResource(postService.unAssignPostTag(postId,tagId));
+    }
+
+    private Post convertToEntity(SavePostResource resource) {
+        return mapper.map(resource, Post.class);
+    }
+
+    private PostResource convertToResource(Post entity) {
+        return mapper.map(entity, PostResource.class);
+    }
 }
