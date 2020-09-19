@@ -4,69 +4,76 @@ import com.acme.probe.domain.model.Comment;
 import com.acme.probe.domain.model.Post;
 import com.acme.probe.domain.repository.CommentRepository;
 import com.acme.probe.domain.repository.PostRepository;
+import com.acme.probe.domain.service.CommentService;
 import com.acme.probe.exception.ResourceNotFoundException;
+import com.acme.probe.resource.CommentResource;
+import com.acme.probe.resource.PostResource;
+import com.acme.probe.resource.SaveCommentResource;
+import com.acme.probe.resource.SavePostResource;
+import org.apache.catalina.mapper.Mapper;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api")
 public class CommentsController {
 
     @Autowired
-    private CommentRepository commentRepository;
+    private ModelMapper mapper;
+
 
     @Autowired
-    private PostRepository postRepository;
+    private CommentService commentService;
 
     @GetMapping("/posts/{postId}/comments")
-    public Page<Comment> getAllCommentsByPostId(
+    public Page<CommentResource> getAllCommentsByPostId(
             @PathVariable Long postId, Pageable pageable) {
-        return commentRepository.findByPostId(postId,pageable);
+        Page<Comment> commentPage = commentService.getAllCommentsByPostId(postId, pageable);
+        List<CommentResource> resources = commentPage.getContent()
+                .stream()
+                .map(this::convertToResource)
+                .collect(Collectors.toList());
+        return new PageImpl<>(resources, pageable, resources.size());
+
     }
 
     @PostMapping("/posts/{postId}/comments")
-    public Comment createComment(@PathVariable Long postId, @Valid @RequestBody Comment comment) {
-        return postRepository.findById(postId)
-                .map(post -> {
-                    comment.setPost(post);
-                    return commentRepository.save(comment);
-                }).orElseThrow(() -> new ResourceNotFoundException(
-                        "PostId "+ postId + " not found."));
+    public CommentResource createComment(@PathVariable(name = "postId") Long postId, @Valid @RequestBody SaveCommentResource resource) {
+        Comment comment = convertToEntity(resource);
+        return convertToResource(commentService.createComment(postId, comment));
     }
 
     @PutMapping("/posts/{postId}/comments/{commentId}")
-    public Comment updateComment(
+    public CommentResource updateComment(
             @PathVariable(value = "postId") Long postId,
             @PathVariable(value = "commentId") Long commentId,
-            @Valid @RequestBody Comment commentRequest) {
-        if(!postRepository.existsById(postId)) {
-            throw new ResourceNotFoundException(
-                    "PostId" + postId + " not found."
-            );
-        }
-        return commentRepository.findById(commentId)
-                .map(comment -> {
-                    comment.setText(commentRequest.getText());
-                    return commentRepository.save(comment);
-                }).orElseThrow(() -> new ResourceNotFoundException(
-                        "CommentId "+ commentId + " not found."));
+            @Valid @RequestBody SaveCommentResource commentRequest) {
+        return convertToResource(commentService.updateComment(postId, commentId, convertToEntity(commentRequest)));
     }
 
     @DeleteMapping("/posts/{postId}/comments/{commentId}")
     public ResponseEntity<?> deleteComment(
             @PathVariable(value = "postId") Long postId,
             @PathVariable(value = "commentId") Long commentId) {
-        return  commentRepository.findByIdAndPostId(commentId,postId)
-                .map(comment -> {
-                    commentRepository.delete(comment);
-                    return ResponseEntity.ok().build();
-                }).orElseThrow(() -> new ResourceNotFoundException(
-                        "Comment with Id "+ commentId + " not found"));
+        return commentService.deleteComment(postId, commentId);
+    }
+
+
+    private Comment convertToEntity(SaveCommentResource resource) {
+        return mapper.map(resource, Comment.class);
+    }
+
+    private CommentResource convertToResource(Comment entity) {
+        return mapper.map(entity, CommentResource.class);
     }
 
 }
